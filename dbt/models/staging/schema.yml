@@ -18,7 +18,7 @@ models:
           - unique
 
       - name: client_id
-        description: Source client identifier stamped at ingestion. Values: client_a, client_c.
+        description: "Source client identifier stamped at ingestion. Values: client_a, client_c."
         tests:
           - not_null
           - accepted_values:

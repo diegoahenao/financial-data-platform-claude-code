@@ -17,8 +17,35 @@
 
 with
 
-source as (
+raw_source as (
     select * from {{ source('raw', 'TRANSACTIONS') }}
+),
+
+-- Client A: one <Transaction> per row via STRIP_OUTER_ELEMENT = TRUE at ingest
+client_a_rows as (
+    select client_id, _source_file, _loaded_at, raw_payload
+    from raw_source
+    where client_id = 'client_a'
+),
+
+-- Client C: entire JSON doc loaded as one VARIANT row per file.
+-- The outer structure is {"client": ..., "transactions": [...]}, so we must
+-- unnest the transactions array here to get one row per transaction.
+client_c_rows as (
+    select
+        s.client_id,
+        s._source_file,
+        s._loaded_at,
+        f.value as raw_payload
+    from raw_source s,
+        lateral flatten(input => s.raw_payload:transactions) f
+    where s.client_id = 'client_c'
+),
+
+source as (
+    select * from client_a_rows
+    union all
+    select * from client_c_rows
 ),
 
 parsed as (
