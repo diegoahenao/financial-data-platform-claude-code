@@ -139,7 +139,7 @@ variable "snowflake_tf_role" {
     (account, user, private key) must be set via environment variables.
   EOT
   type        = string
-  default     = "SYSADMIN"
+  default     = "ACCOUNTADMIN"
 }
 
 # ==============================================================================
@@ -188,6 +188,12 @@ variable "snowflake_warehouse_size" {
     )
     error_message = "snowflake_warehouse_size must be a standard Snowflake warehouse size."
   }
+}
+
+variable "snowflake_private_key_path" {
+  description = "Filesystem path to the Snowflake Terraform service account RSA private key (.p8). In CI this file is written to /tmp/snowflake_tf_key.p8 before terraform init."
+  type        = string
+  default     = "/tmp/snowflake_tf_key.p8"
 }
 
 variable "snowflake_auto_suspend_seconds" {

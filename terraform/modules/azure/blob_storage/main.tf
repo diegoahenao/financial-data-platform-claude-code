@@ -1,17 +1,6 @@
 locals {
   # Azure storage account names must be lowercase alphanumeric, 3-24 chars.
   storage_account_name = lower(replace(var.storage_account_name, "-", ""))
-
-  # Flatten container→folder pairs into a single map for placeholder blobs.
-  folder_map = merge([
-    for container_key, container in var.landing_containers : {
-      for folder in container.folders :
-      "${container_key}/${folder}" => {
-        container_key = container_key
-        folder        = folder
-      }
-    }
-  ]...)
 }
 
 # ==============================================================================
@@ -54,20 +43,6 @@ resource "azurerm_storage_container" "this" {
   name                  = each.value.container_name
   storage_account_id    = azurerm_storage_account.this.id
   container_access_type = "private"
-}
-
-# ==============================================================================
-# Folder placeholders — zero-byte blobs that create virtual directory paths
-# ==============================================================================
-
-resource "azurerm_storage_blob" "folder_placeholder" {
-  for_each = local.folder_map
-
-  name                   = "${each.value.folder}/.keep"
-  storage_account_name   = azurerm_storage_account.this.name
-  storage_container_name = azurerm_storage_container.this[each.value.container_key].name
-  type                   = "Block"
-  size                   = 0
 }
 
 # ==============================================================================
