@@ -156,3 +156,4 @@ final as (
 )
 
 select * from final
+where {{ is_clean_id('source_payment_id', 'payment_id') }}

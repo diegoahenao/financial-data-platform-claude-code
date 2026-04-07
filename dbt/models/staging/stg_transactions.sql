@@ -193,3 +193,4 @@ final as (
 )
 
 select * from final
+where {{ is_clean_id('source_transaction_id', 'transaction_id') }}
