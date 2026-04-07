@@ -47,6 +47,32 @@ default_args = {
 }
 
 # ---------------------------------------------------------------------------
+# Named file format DDLs
+# Must exist before any COPY INTO referencing them runs.
+# These are CREATE OR REPLACE so the task is idempotent.
+# ---------------------------------------------------------------------------
+
+DDL_FMT_CSV = f"""
+CREATE OR REPLACE FILE FORMAT {DATABASE}.{RAW_SCHEMA}.FMT_CSV
+    TYPE = 'CSV'
+    SKIP_HEADER = 1
+    FIELD_OPTIONALLY_ENCLOSED_BY = '"'
+    NULL_IF = ('', 'NULL', 'null')
+    EMPTY_FIELD_AS_NULL = TRUE;
+"""
+
+DDL_FMT_JSON = f"""
+CREATE OR REPLACE FILE FORMAT {DATABASE}.{RAW_SCHEMA}.FMT_JSON
+    TYPE = 'JSON';
+"""
+
+DDL_FMT_XML = f"""
+CREATE OR REPLACE FILE FORMAT {DATABASE}.{RAW_SCHEMA}.FMT_XML
+    TYPE = 'XML'
+    STRIP_OUTER_ELEMENT = TRUE;
+"""
+
+# ---------------------------------------------------------------------------
 # DDL helpers — CREATE TABLE IF NOT EXISTS for each RAW entity
 # ---------------------------------------------------------------------------
 
@@ -119,6 +145,9 @@ CREATE TABLE IF NOT EXISTS {DATABASE}.{RAW_SCHEMA}.PAYMENTS (
 
 # ---------------------------------------------------------------------------
 # COPY INTO statements
+# FILE_FORMAT references a named format (FORMAT_NAME) created above.
+# PATTERN uses (?i) prefix for case-insensitive matching — required because
+# source files arrive with mixed-case names and extensions (e.g. Customer.CSV).
 # ---------------------------------------------------------------------------
 
 COPY_CUSTOMERS_CLIENT_A = f"""
@@ -134,14 +163,8 @@ FROM (
         METADATA$FILENAME,
         CURRENT_TIMESTAMP()
     FROM @{STAGE}/{CLIENT_A_PATH}
-    (FILE_FORMAT => (
-        TYPE = 'CSV'
-        SKIP_HEADER = 1
-        FIELD_OPTIONALLY_ENCLOSED_BY = '"'
-        NULL_IF = ('', 'NULL', 'null')
-        EMPTY_FIELD_AS_NULL = TRUE
-    ),
-    PATTERN => '.*[Cc]ustomer.*\\.csv')
+    (FILE_FORMAT => (FORMAT_NAME = '{DATABASE}.{RAW_SCHEMA}.FMT_CSV'),
+    PATTERN => '(?i).*customer.*\\.csv')
 )
 ON_ERROR = 'CONTINUE'
 PURGE = FALSE;
@@ -160,14 +183,8 @@ FROM (
         METADATA$FILENAME,
         CURRENT_TIMESTAMP()
     FROM @{STAGE}/{CLIENT_C_PATH}
-    (FILE_FORMAT => (
-        TYPE = 'CSV'
-        SKIP_HEADER = 1
-        FIELD_OPTIONALLY_ENCLOSED_BY = '"'
-        NULL_IF = ('', 'NULL', 'null')
-        EMPTY_FIELD_AS_NULL = TRUE
-    ),
-    PATTERN => '.*[Cc]ustomer.*\\.csv')
+    (FILE_FORMAT => (FORMAT_NAME = '{DATABASE}.{RAW_SCHEMA}.FMT_CSV'),
+    PATTERN => '(?i).*customer.*\\.csv')
 )
 ON_ERROR = 'CONTINUE'
 PURGE = FALSE;
@@ -186,14 +203,8 @@ FROM (
         METADATA$FILENAME,
         CURRENT_TIMESTAMP()
     FROM @{STAGE}/{CLIENT_A_PATH}
-    (FILE_FORMAT => (
-        TYPE = 'CSV'
-        SKIP_HEADER = 1
-        FIELD_OPTIONALLY_ENCLOSED_BY = '"'
-        NULL_IF = ('', 'NULL', 'null')
-        EMPTY_FIELD_AS_NULL = TRUE
-    ),
-    PATTERN => '.*[Oo]rder.*\\.csv')
+    (FILE_FORMAT => (FORMAT_NAME = '{DATABASE}.{RAW_SCHEMA}.FMT_CSV'),
+    PATTERN => '(?i).*order.*\\.csv')
 )
 ON_ERROR = 'CONTINUE'
 PURGE = FALSE;
@@ -212,14 +223,8 @@ FROM (
         METADATA$FILENAME,
         CURRENT_TIMESTAMP()
     FROM @{STAGE}/{CLIENT_C_PATH}
-    (FILE_FORMAT => (
-        TYPE = 'CSV'
-        SKIP_HEADER = 1
-        FIELD_OPTIONALLY_ENCLOSED_BY = '"'
-        NULL_IF = ('', 'NULL', 'null')
-        EMPTY_FIELD_AS_NULL = TRUE
-    ),
-    PATTERN => '.*[Oo]rder.*\\.csv')
+    (FILE_FORMAT => (FORMAT_NAME = '{DATABASE}.{RAW_SCHEMA}.FMT_CSV'),
+    PATTERN => '(?i).*order.*\\.csv')
 )
 ON_ERROR = 'CONTINUE'
 PURGE = FALSE;
@@ -238,14 +243,8 @@ FROM (
         METADATA$FILENAME,
         CURRENT_TIMESTAMP()
     FROM @{STAGE}/{CLIENT_A_PATH}
-    (FILE_FORMAT => (
-        TYPE = 'CSV'
-        SKIP_HEADER = 1
-        FIELD_OPTIONALLY_ENCLOSED_BY = '"'
-        NULL_IF = ('', 'NULL', 'null')
-        EMPTY_FIELD_AS_NULL = TRUE
-    ),
-    PATTERN => '.*[Pp]roduct.*\\.csv')
+    (FILE_FORMAT => (FORMAT_NAME = '{DATABASE}.{RAW_SCHEMA}.FMT_CSV'),
+    PATTERN => '(?i).*product.*\\.csv')
 )
 ON_ERROR = 'CONTINUE'
 PURGE = FALSE;
@@ -264,14 +263,8 @@ FROM (
         METADATA$FILENAME,
         CURRENT_TIMESTAMP()
     FROM @{STAGE}/{CLIENT_C_PATH}
-    (FILE_FORMAT => (
-        TYPE = 'CSV'
-        SKIP_HEADER = 1
-        FIELD_OPTIONALLY_ENCLOSED_BY = '"'
-        NULL_IF = ('', 'NULL', 'null')
-        EMPTY_FIELD_AS_NULL = TRUE
-    ),
-    PATTERN => '.*[Pp]roduct.*\\.csv')
+    (FILE_FORMAT => (FORMAT_NAME = '{DATABASE}.{RAW_SCHEMA}.FMT_CSV'),
+    PATTERN => '(?i).*product.*\\.csv')
 )
 ON_ERROR = 'CONTINUE'
 PURGE = FALSE;
@@ -289,18 +282,15 @@ FROM (
         METADATA$FILENAME,
         CURRENT_TIMESTAMP()
     FROM @{STAGE}/{CLIENT_A_PATH}
-    (FILE_FORMAT => (
-        TYPE = 'XML'
-        STRIP_OUTER_ELEMENT = TRUE
-    ),
-    PATTERN => '.*[Tt]ransaction.*\\.(xml|txt)')
+    (FILE_FORMAT => (FORMAT_NAME = '{DATABASE}.{RAW_SCHEMA}.FMT_XML'),
+    PATTERN => '(?i).*transaction.*\\.(xml|txt)')
 )
 ON_ERROR = 'CONTINUE'
 PURGE = FALSE;
 """
 
 # JSON transactions — loaded as one VARIANT row per file.
-# The outer JSON document is {"client": ..., "transactions": [...]}, not a bare array,
+# The outer JSON document is {{"client": ..., "transactions": [...]}}, not a bare array,
 # so STRIP_OUTER_ARRAY is not applicable. The dbt staging model unnests the
 # transactions array via LATERAL FLATTEN(input => raw_payload:transactions).
 COPY_TRANSACTIONS_CLIENT_C = f"""
@@ -314,10 +304,8 @@ FROM (
         METADATA$FILENAME,
         CURRENT_TIMESTAMP()
     FROM @{STAGE}/{CLIENT_C_PATH}
-    (FILE_FORMAT => (
-        TYPE = 'JSON'
-    ),
-    PATTERN => '.*transactions.*\\.json')
+    (FILE_FORMAT => (FORMAT_NAME = '{DATABASE}.{RAW_SCHEMA}.FMT_JSON'),
+    PATTERN => '(?i).*transaction.*\\.json')
 )
 ON_ERROR = 'CONTINUE'
 PURGE = FALSE;
@@ -336,14 +324,8 @@ FROM (
         METADATA$FILENAME,
         CURRENT_TIMESTAMP()
     FROM @{STAGE}/{CLIENT_C_PATH}
-    (FILE_FORMAT => (
-        TYPE = 'CSV'
-        SKIP_HEADER = 1
-        FIELD_OPTIONALLY_ENCLOSED_BY = '"'
-        NULL_IF = ('', 'NULL', 'null')
-        EMPTY_FIELD_AS_NULL = TRUE
-    ),
-    PATTERN => '.*[Pp]ayment.*\\.csv')
+    (FILE_FORMAT => (FORMAT_NAME = '{DATABASE}.{RAW_SCHEMA}.FMT_CSV'),
+    PATTERN => '(?i).*payment.*\\.csv')
 )
 ON_ERROR = 'CONTINUE'
 PURGE = FALSE;
@@ -363,6 +345,26 @@ with DAG(
     max_active_runs=1,
     tags=["ingestion", "raw", "client_a", "client_c"],
 ) as dag:
+
+    # ── File formats (idempotent — CREATE OR REPLACE) ─────────────────────────
+    # Named formats must exist before any COPY INTO runs. All three are created
+    # in parallel; entity groups depend on all three completing.
+    create_fmt_csv = SQLExecuteQueryOperator(
+        task_id="create_fmt_csv",
+        conn_id=SNOWFLAKE_CONN_ID,
+        sql=DDL_FMT_CSV,
+    )
+    create_fmt_json = SQLExecuteQueryOperator(
+        task_id="create_fmt_json",
+        conn_id=SNOWFLAKE_CONN_ID,
+        sql=DDL_FMT_JSON,
+    )
+    create_fmt_xml = SQLExecuteQueryOperator(
+        task_id="create_fmt_xml",
+        conn_id=SNOWFLAKE_CONN_ID,
+        sql=DDL_FMT_XML,
+    )
+    setup_formats = [create_fmt_csv, create_fmt_json, create_fmt_xml]
 
     # ── Customers ─────────────────────────────────────────────────────────────
     with TaskGroup("customers") as tg_customers:
@@ -454,5 +456,5 @@ with DAG(
         )
         create_payments >> copy_payments_c
 
-    # All entity groups run in parallel — no dependency between them
-    [tg_customers, tg_orders, tg_products, tg_transactions, tg_payments]
+    # File formats must be ready before any entity group starts
+    setup_formats >> [tg_customers, tg_orders, tg_products, tg_transactions, tg_payments]
