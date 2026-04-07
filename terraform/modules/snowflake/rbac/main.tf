@@ -71,6 +71,18 @@ resource "snowflake_grant_privileges_to_account_role" "loader_raw_future_tables"
   }
 }
 
+# Covers tables that already existed before the FUTURE grant was first applied.
+resource "snowflake_grant_privileges_to_account_role" "loader_raw_all_tables" {
+  account_role_name = snowflake_account_role.loader.name
+  privileges        = ["INSERT", "UPDATE", "DELETE", "TRUNCATE"]
+  on_schema_object {
+    all {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${var.database_name}\".\"RAW\""
+    }
+  }
+}
+
 # ==============================================================================
 # Schema-level grants — TRANSFORMER (RAW read + SILVER/GOLD write)
 # ==============================================================================
@@ -88,6 +100,18 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_raw_future_ta
   privileges        = ["SELECT"]
   on_schema_object {
     future {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${var.database_name}\".\"RAW\""
+    }
+  }
+}
+
+# Covers RAW tables that already existed before the FUTURE grant was first applied.
+resource "snowflake_grant_privileges_to_account_role" "transformer_raw_all_tables" {
+  account_role_name = snowflake_account_role.transformer.name
+  privileges        = ["SELECT"]
+  on_schema_object {
+    all {
       object_type_plural = "TABLES"
       in_schema          = "\"${var.database_name}\".\"RAW\""
     }
@@ -113,6 +137,18 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_silver_future
   }
 }
 
+# Covers SILVER tables created in a prior run (dbt incremental re-runs).
+resource "snowflake_grant_privileges_to_account_role" "transformer_silver_all_tables" {
+  account_role_name = snowflake_account_role.transformer.name
+  privileges        = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"]
+  on_schema_object {
+    all {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${var.database_name}\".\"SILVER\""
+    }
+  }
+}
+
 resource "snowflake_grant_privileges_to_account_role" "transformer_gold_schema" {
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["USAGE", "CREATE TABLE", "CREATE VIEW"]
@@ -126,6 +162,18 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_gold_future_t
   privileges        = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"]
   on_schema_object {
     future {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${var.database_name}\".\"GOLD\""
+    }
+  }
+}
+
+# Covers GOLD tables created in a prior run.
+resource "snowflake_grant_privileges_to_account_role" "transformer_gold_all_tables" {
+  account_role_name = snowflake_account_role.transformer.name
+  privileges        = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"]
+  on_schema_object {
+    all {
       object_type_plural = "TABLES"
       in_schema          = "\"${var.database_name}\".\"GOLD\""
     }
@@ -155,11 +203,35 @@ resource "snowflake_grant_privileges_to_account_role" "reporter_gold_future_tabl
   }
 }
 
+# Covers GOLD tables created before this grant was first applied.
+resource "snowflake_grant_privileges_to_account_role" "reporter_gold_all_tables" {
+  account_role_name = snowflake_account_role.reporter.name
+  privileges        = ["SELECT"]
+  on_schema_object {
+    all {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${var.database_name}\".\"GOLD\""
+    }
+  }
+}
+
 resource "snowflake_grant_privileges_to_account_role" "reporter_gold_future_views" {
   account_role_name = snowflake_account_role.reporter.name
   privileges        = ["SELECT"]
   on_schema_object {
     future {
+      object_type_plural = "VIEWS"
+      in_schema          = "\"${var.database_name}\".\"GOLD\""
+    }
+  }
+}
+
+# Covers GOLD views created before this grant was first applied.
+resource "snowflake_grant_privileges_to_account_role" "reporter_gold_all_views" {
+  account_role_name = snowflake_account_role.reporter.name
+  privileges        = ["SELECT"]
+  on_schema_object {
+    all {
       object_type_plural = "VIEWS"
       in_schema          = "\"${var.database_name}\".\"GOLD\""
     }
