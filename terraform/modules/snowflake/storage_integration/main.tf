@@ -29,24 +29,31 @@ resource "snowflake_storage_integration" "this" {
 }
 
 # ==============================================================================
-# Azure role assignment — Snowflake managed identity → Blob Storage
+# NOTE: Azure role assignment for Snowflake managed identity
 # ==============================================================================
-# Snowflake creates a multi-tenant service principal in Azure AD after the
-# integration is provisioned. We look it up and grant it Storage Blob Data Reader
-# so COPY INTO commands can read files from the landing containers.
-
-data "azuread_service_principal" "snowflake" {
-  display_name = snowflake_storage_integration.this.azure_multi_tenant_app_name
-}
-
-resource "azurerm_role_assignment" "snowflake_storage_reader" {
-  scope                = var.storage_account_id
-  role_definition_name = "Storage Blob Data Reader"
-  principal_id         = data.azuread_service_principal.snowflake.object_id
-
-  # Snowflake's service principal may take a few seconds to propagate in Azure AD.
-  depends_on = [data.azuread_service_principal.snowflake]
-}
+# After terraform apply, Snowflake generates a multi-tenant Azure AD app.
+# This app must be consented in your tenant before its service principal exists.
+#
+# Run these commands ONCE after the first successful apply:
+#
+#   # 1. Get the consent URL and app name from Terraform outputs
+#   terraform output snowflake_consent_url
+#   terraform output snowflake_app_name
+#
+#   # 2. Consent the app in your Azure AD tenant (creates the service principal)
+#   az ad sp create --id <APPLICATION_ID_FROM_CONSENT_URL>
+#
+#   # 3. Grant Storage Blob Data Reader to the new service principal
+#   SP_ID=$(az ad sp show --display-name "<APP_NAME>" --query id -o tsv)
+#   az role assignment create \
+#     --assignee-object-id $SP_ID \
+#     --assignee-principal-type ServicePrincipal \
+#     --role "Storage Blob Data Reader" \
+#     --scope "<STORAGE_ACCOUNT_ID>"
+#
+# This is decoupled from Terraform because Azure AD propagation of the
+# multi-tenant consent is not instantaneous and cannot be orchestrated in
+# a single apply run.
 
 # ==============================================================================
 # External Stages — one per landing container
