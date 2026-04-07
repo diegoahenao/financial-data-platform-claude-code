@@ -16,17 +16,17 @@
 
 with
 
-source as (
+raw_source as (
     select * from {{ source('raw', 'TRANSACTIONS') }}
 ),
 
 -- ── Client A: flatten XML <Item> nodes ───────────────────────────────────────
+-- Client A rows are already one-per-transaction (STRIP_OUTER_ELEMENT = TRUE).
 client_a_items as (
     select
         s.client_id,
         s._source_file,
         s._loaded_at,
-        s.raw_payload,
 
         nullif(trim(get_path(xmlget(s.raw_payload, 'TransactionID'), '$')::string), '')
             as source_transaction_id,
@@ -47,41 +47,44 @@ client_a_items as (
             get_path(xmlget(f.value, 'UnitPrice'), '@currency')::string
         ), ''))                                                      as currency
 
-    from source s,
+    from raw_source s,
         lateral flatten(input => xmlget(s.raw_payload, 'Items'):$) f
     where s.client_id = 'client_a'
 ),
 
--- ── Client C: flatten JSON items array ───────────────────────────────────────
+-- ── Client C: double-flatten JSON transactions → items ────────────────────────
+-- Client C loads one VARIANT row per file (outer doc is an object, not array).
+-- First flatten the transactions array, then flatten each transaction's items.
 client_c_items as (
     select
         s.client_id,
         s._source_file,
         s._loaded_at,
-        s.raw_payload,
 
-        nullif(trim(s.raw_payload:id::string), '')
+        nullif(trim(txn.value:id::string), '')
             as source_transaction_id,
 
-        nullif(trim(f.value:sku::string), '')
+        nullif(trim(item.value:sku::string), '')
             as source_sku,
 
-        nullif(trim(f.value:description::string), '')
+        nullif(trim(item.value:description::string), '')
             as item_description,
 
-        try_cast(f.value:qty::string as integer)
+        try_cast(item.value:qty::string as integer)
             as quantity,
 
-        try_cast(f.value:price:amount::string as number(12, 2))
+        try_cast(item.value:price:amount::string as number(12, 2))
             as unit_price,
 
-        upper(nullif(trim(f.value:price:currency::string), ''))
+        upper(nullif(trim(item.value:price:currency::string), ''))
             as currency
 
-    from source s,
-        lateral flatten(input => s.raw_payload:items) f
+    from raw_source s,
+        lateral flatten(input => s.raw_payload:transactions) txn,
+        lateral flatten(input => txn.value:items) item
     where s.client_id = 'client_c'
-      and array_size(s.raw_payload:items) > 0
+      and array_size(s.raw_payload:transactions) > 0
+      and array_size(txn.value:items) > 0
 ),
 
 combined as (

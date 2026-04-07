@@ -19,7 +19,7 @@ sources:
         description: Raw customer records from all clients. One row per source file row.
         columns:
           - name: client_id
-            description: Identifies the source client. Values: client_a, client_c.
+            description: "Identifies the source client. Values: client_a, client_c."
             tests:
               - not_null
               - accepted_values:
@@ -52,8 +52,9 @@ sources:
       - name: TRANSACTIONS
         description: >
           Raw transaction records from all clients. Client A loads XML as VARIANT via
-          COPY INTO with FILE_FORMAT TYPE=XML. Client C loads JSON with STRIP_OUTER_ARRAY=TRUE.
-          Both produce a raw_payload VARIANT column parsed in the staging models.
+          COPY INTO with FILE_FORMAT TYPE=XML (one row per Transaction element). Client C
+          loads the full JSON document as one VARIANT row; the staging model unnests the
+          transactions array via LATERAL FLATTEN. Both produce a raw_payload VARIANT column.
         columns:
           - name: client_id
             tests:

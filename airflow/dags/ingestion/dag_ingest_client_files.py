@@ -299,7 +299,10 @@ ON_ERROR = 'CONTINUE'
 PURGE = FALSE;
 """
 
-# JSON transactions — STRIP_OUTER_ARRAY flattens the top-level array into rows
+# JSON transactions — loaded as one VARIANT row per file.
+# The outer JSON document is {"client": ..., "transactions": [...]}, not a bare array,
+# so STRIP_OUTER_ARRAY is not applicable. The dbt staging model unnests the
+# transactions array via LATERAL FLATTEN(input => raw_payload:transactions).
 COPY_TRANSACTIONS_CLIENT_C = f"""
 COPY INTO {DATABASE}.{RAW_SCHEMA}.TRANSACTIONS (
     client_id, raw_payload, _source_file, _loaded_at
@@ -313,7 +316,6 @@ FROM (
     FROM @{STAGE}/{CLIENT_C_PATH}
     (FILE_FORMAT => (
         TYPE = 'JSON'
-        STRIP_OUTER_ARRAY = TRUE
     ),
     PATTERN => '.*transactions.*\\.json')
 )
