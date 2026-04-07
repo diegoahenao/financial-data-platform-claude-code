@@ -44,6 +44,19 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_db_usage" {
   }
 }
 
+# dbt runs CREATE SCHEMA IF NOT EXISTS before executing models.
+# Without CREATE SCHEMA on the database, Snowflake returns 003001
+# "Insufficient privileges to operate on database" even if USAGE is present.
+resource "snowflake_grant_privileges_to_account_role" "transformer_db_create_schema" {
+  account_role_name = snowflake_account_role.transformer.name
+  privileges        = ["CREATE SCHEMA"]
+  always_apply      = true
+  on_account_object {
+    object_type = "DATABASE"
+    object_name = var.database_name
+  }
+}
+
 resource "snowflake_grant_privileges_to_account_role" "reporter_db_usage" {
   account_role_name = snowflake_account_role.reporter.name
   privileges        = ["USAGE"]
