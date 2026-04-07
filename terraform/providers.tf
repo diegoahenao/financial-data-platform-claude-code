@@ -79,7 +79,10 @@ provider "azuread" {}
 #
 # authenticator = "JWT" is required to activate private key authentication.
 # Without it the provider defaults to password auth and fails.
+# private_key uses the file() function as required by snowflakedb/snowflake v0.98+
+# (SNOWFLAKE_PRIVATE_KEY_PATH env var is deprecated in favour of explicit config).
 provider "snowflake" {
   role          = var.snowflake_tf_role
   authenticator = "JWT"
+  private_key   = file(var.snowflake_private_key_path)
 }

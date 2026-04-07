@@ -24,7 +24,7 @@ jobs:
       SNOWFLAKE_ORGANIZATION_NAME:  ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME }}
       SNOWFLAKE_ACCOUNT_NAME:       ${{ secrets.SNOWFLAKE_ACCOUNT_NAME }}
       SNOWFLAKE_USER:               ${{ secrets.SNOWFLAKE_USER }}
-      SNOWFLAKE_PRIVATE_KEY_PATH:   /tmp/snowflake_tf_key.p8
+      # SNOWFLAKE_PRIVATE_KEY_PATH is no longer needed — providers.tf uses file() directly
     outputs:
       plan-exitcode: ${{ steps.plan.outputs.exitcode }}
 
@@ -101,7 +101,7 @@ jobs:
       SNOWFLAKE_ORGANIZATION_NAME:  ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME }}
       SNOWFLAKE_ACCOUNT_NAME:       ${{ secrets.SNOWFLAKE_ACCOUNT_NAME }}
       SNOWFLAKE_USER:               ${{ secrets.SNOWFLAKE_USER }}
-      SNOWFLAKE_PRIVATE_KEY_PATH:   /tmp/snowflake_tf_key.p8
+      # SNOWFLAKE_PRIVATE_KEY_PATH is no longer needed — providers.tf uses file() directly
 
     steps:
       - uses: actions/checkout@v4
