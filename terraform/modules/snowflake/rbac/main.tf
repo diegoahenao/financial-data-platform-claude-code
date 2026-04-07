@@ -21,9 +21,13 @@ resource "snowflake_account_role" "reporter" {
 # Database-level grants
 # ==============================================================================
 
+# always_apply = true forces the provider to re-issue the GRANT on every apply.
+# This guards against the Snowflake provider v0.98 known issue where a grant
+# is recorded in Terraform state but not actually executed in Snowflake.
 resource "snowflake_grant_privileges_to_account_role" "loader_db_usage" {
   account_role_name = snowflake_account_role.loader.name
   privileges        = ["USAGE"]
+  always_apply      = true
   on_account_object {
     object_type = "DATABASE"
     object_name = var.database_name
@@ -33,6 +37,7 @@ resource "snowflake_grant_privileges_to_account_role" "loader_db_usage" {
 resource "snowflake_grant_privileges_to_account_role" "transformer_db_usage" {
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["USAGE"]
+  always_apply      = true
   on_account_object {
     object_type = "DATABASE"
     object_name = var.database_name
@@ -42,6 +47,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_db_usage" {
 resource "snowflake_grant_privileges_to_account_role" "reporter_db_usage" {
   account_role_name = snowflake_account_role.reporter.name
   privileges        = ["USAGE"]
+  always_apply      = true
   on_account_object {
     object_type = "DATABASE"
     object_name = var.database_name
@@ -55,6 +61,7 @@ resource "snowflake_grant_privileges_to_account_role" "reporter_db_usage" {
 resource "snowflake_grant_privileges_to_account_role" "loader_raw_schema" {
   account_role_name = snowflake_account_role.loader.name
   privileges        = ["USAGE", "CREATE TABLE", "CREATE STAGE"]
+  always_apply      = true
   on_schema {
     schema_name = "\"${var.database_name}\".\"RAW\""
   }
@@ -75,6 +82,7 @@ resource "snowflake_grant_privileges_to_account_role" "loader_raw_future_tables"
 resource "snowflake_grant_privileges_to_account_role" "loader_raw_all_tables" {
   account_role_name = snowflake_account_role.loader.name
   privileges        = ["INSERT", "UPDATE", "DELETE", "TRUNCATE"]
+  always_apply      = true
   on_schema_object {
     all {
       object_type_plural = "TABLES"
@@ -90,6 +98,7 @@ resource "snowflake_grant_privileges_to_account_role" "loader_raw_all_tables" {
 resource "snowflake_grant_privileges_to_account_role" "transformer_raw_schema" {
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["USAGE"]
+  always_apply      = true
   on_schema {
     schema_name = "\"${var.database_name}\".\"RAW\""
   }
@@ -110,6 +119,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_raw_future_ta
 resource "snowflake_grant_privileges_to_account_role" "transformer_raw_all_tables" {
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["SELECT"]
+  always_apply      = true
   on_schema_object {
     all {
       object_type_plural = "TABLES"
@@ -121,6 +131,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_raw_all_table
 resource "snowflake_grant_privileges_to_account_role" "transformer_silver_schema" {
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["USAGE", "CREATE TABLE", "CREATE VIEW"]
+  always_apply      = true
   on_schema {
     schema_name = "\"${var.database_name}\".\"SILVER\""
   }
@@ -141,6 +152,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_silver_future
 resource "snowflake_grant_privileges_to_account_role" "transformer_silver_all_tables" {
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"]
+  always_apply      = true
   on_schema_object {
     all {
       object_type_plural = "TABLES"
@@ -152,6 +164,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_silver_all_ta
 resource "snowflake_grant_privileges_to_account_role" "transformer_gold_schema" {
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["USAGE", "CREATE TABLE", "CREATE VIEW"]
+  always_apply      = true
   on_schema {
     schema_name = "\"${var.database_name}\".\"GOLD\""
   }
@@ -172,6 +185,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_gold_future_t
 resource "snowflake_grant_privileges_to_account_role" "transformer_gold_all_tables" {
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"]
+  always_apply      = true
   on_schema_object {
     all {
       object_type_plural = "TABLES"
@@ -187,6 +201,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_gold_all_tabl
 resource "snowflake_grant_privileges_to_account_role" "reporter_gold_schema" {
   account_role_name = snowflake_account_role.reporter.name
   privileges        = ["USAGE"]
+  always_apply      = true
   on_schema {
     schema_name = "\"${var.database_name}\".\"GOLD\""
   }
@@ -207,6 +222,7 @@ resource "snowflake_grant_privileges_to_account_role" "reporter_gold_future_tabl
 resource "snowflake_grant_privileges_to_account_role" "reporter_gold_all_tables" {
   account_role_name = snowflake_account_role.reporter.name
   privileges        = ["SELECT"]
+  always_apply      = true
   on_schema_object {
     all {
       object_type_plural = "TABLES"
@@ -230,6 +246,7 @@ resource "snowflake_grant_privileges_to_account_role" "reporter_gold_future_view
 resource "snowflake_grant_privileges_to_account_role" "reporter_gold_all_views" {
   account_role_name = snowflake_account_role.reporter.name
   privileges        = ["SELECT"]
+  always_apply      = true
   on_schema_object {
     all {
       object_type_plural = "VIEWS"
