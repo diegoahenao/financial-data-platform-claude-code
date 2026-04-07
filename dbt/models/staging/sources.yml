@@ -1,0 +1,77 @@
+version: 2
+
+sources:
+  - name: raw
+    database: FINANCIAL_DATA
+    schema: RAW
+    description: >
+      Exact source copies loaded via COPY INTO from Azure Blob Storage External Stages.
+      No business logic applied. Append or full-replace only. All rows carry a client_id
+      stamped at load time by the Airflow ingestion DAG.
+
+    freshness:
+      warn_after: {count: 25, period: hour}
+      error_after: {count: 49, period: hour}
+    loaded_at_field: _loaded_at
+
+    tables:
+      - name: CUSTOMERS
+        description: Raw customer records from all clients. One row per source file row.
+        columns:
+          - name: client_id
+            description: Identifies the source client. Values: client_a, client_c.
+            tests:
+              - not_null
+              - accepted_values:
+                  values: [client_a, client_c]
+          - name: _loaded_at
+            description: UTC timestamp stamped by the COPY INTO DAG at ingestion time.
+            tests:
+              - not_null
+
+      - name: ORDERS
+        description: Raw order records from all clients.
+        columns:
+          - name: client_id
+            tests:
+              - not_null
+          - name: _loaded_at
+            tests:
+              - not_null
+
+      - name: PRODUCTS
+        description: Raw product/SKU records from all clients.
+        columns:
+          - name: client_id
+            tests:
+              - not_null
+          - name: _loaded_at
+            tests:
+              - not_null
+
+      - name: TRANSACTIONS
+        description: >
+          Raw transaction records from all clients. Client A loads XML as VARIANT via
+          COPY INTO with FILE_FORMAT TYPE=XML. Client C loads JSON with STRIP_OUTER_ARRAY=TRUE.
+          Both produce a raw_payload VARIANT column parsed in the staging models.
+        columns:
+          - name: client_id
+            tests:
+              - not_null
+          - name: raw_payload
+            description: Unparsed VARIANT payload (XML or JSON depending on client_id).
+            tests:
+              - not_null
+          - name: _loaded_at
+            tests:
+              - not_null
+
+      - name: PAYMENTS
+        description: Raw payment records from Client C standalone payments CSV.
+        columns:
+          - name: client_id
+            tests:
+              - not_null
+          - name: _loaded_at
+            tests:
+              - not_null

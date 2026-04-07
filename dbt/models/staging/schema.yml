@@ -1,0 +1,277 @@
+version: 2
+
+models:
+  # ---------------------------------------------------------------------------
+  # stg_customers
+  # ---------------------------------------------------------------------------
+  - name: stg_customers
+    description: >
+      Silver layer. One row per unique customer per client, deduplicated on
+      (client_id, source_customer_id). Carries email validity flag, canonical
+      tier mapping, and a _is_duplicate audit flag for records kept in the table
+      but excluded from downstream Gold models.
+    columns:
+      - name: customer_sk
+        description: Surrogate key generated from (client_id, source_customer_id).
+        tests:
+          - not_null
+          - unique
+
+      - name: client_id
+        description: Source client identifier stamped at ingestion. Values: client_a, client_c.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [client_a, client_c]
+
+      - name: source_customer_id
+        description: Original customer ID from the source file.
+        tests:
+          - not_null
+
+      - name: email_is_valid
+        description: True when email matches a valid RFC-style pattern.
+        tests:
+          - not_null
+
+      - name: canonical_customer_tier
+        description: Harmonised tier. Null when source tier is missing or sentinel (UNKNOWN).
+        tests:
+          - accepted_values:
+              values: [BRONZE, SILVER, GOLD, PLATINUM]
+              quote: false
+              where: "canonical_customer_tier is not null"
+
+      - name: _is_duplicate
+        description: True for rows that are duplicates of an earlier-loaded record.
+        tests:
+          - not_null
+
+      - name: _loaded_at
+        description: UTC timestamp from the ingestion DAG.
+        tests:
+          - not_null
+
+  # ---------------------------------------------------------------------------
+  # stg_orders
+  # ---------------------------------------------------------------------------
+  - name: stg_orders
+    description: >
+      Silver layer. One row per unique order per client, deduplicated on
+      (client_id, source_order_id). Missing order dates and invalid customer
+      references are flagged, not dropped.
+    columns:
+      - name: order_sk
+        description: Surrogate key generated from (client_id, source_order_id).
+        tests:
+          - not_null
+          - unique
+
+      - name: client_id
+        tests:
+          - not_null
+          - accepted_values:
+              values: [client_a, client_c]
+
+      - name: source_order_id
+        tests:
+          - not_null
+
+      - name: source_customer_id
+        tests:
+          - not_null
+
+      - name: order_date_is_missing
+        tests:
+          - not_null
+
+      - name: customer_ref_is_valid
+        description: True when source_customer_id exists in stg_customers.
+        tests:
+          - not_null
+
+      - name: _is_duplicate
+        tests:
+          - not_null
+
+      - name: _loaded_at
+        tests:
+          - not_null
+
+  # ---------------------------------------------------------------------------
+  # stg_products
+  # ---------------------------------------------------------------------------
+  - name: stg_products
+    description: >
+      Silver layer. One row per unique SKU per client, deduplicated on
+      (client_id, source_sku). Negative and zero prices are flagged.
+    columns:
+      - name: product_sk
+        description: Surrogate key generated from (client_id, source_sku).
+        tests:
+          - not_null
+          - unique
+
+      - name: client_id
+        tests:
+          - not_null
+          - accepted_values:
+              values: [client_a, client_c]
+
+      - name: source_sku
+        tests:
+          - not_null
+
+      - name: unit_price
+        tests:
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: number
+
+      - name: unit_price_is_valid
+        tests:
+          - not_null
+
+      - name: _is_duplicate
+        tests:
+          - not_null
+
+      - name: _loaded_at
+        tests:
+          - not_null
+
+  # ---------------------------------------------------------------------------
+  # stg_transactions
+  # ---------------------------------------------------------------------------
+  - name: stg_transactions
+    description: >
+      Silver layer. One row per unique transaction per client, parsed from the
+      raw_payload VARIANT column. XML (Client A) and JSON (Client C) are handled
+      via CASE branching. Deduped on (client_id, source_transaction_id).
+    columns:
+      - name: transaction_sk
+        description: Surrogate key generated from (client_id, source_transaction_id).
+        tests:
+          - not_null
+          - unique
+
+      - name: client_id
+        tests:
+          - not_null
+          - accepted_values:
+              values: [client_a, client_c]
+
+      - name: source_transaction_id
+        tests:
+          - not_null
+
+      - name: order_date_is_missing
+        tests:
+          - not_null
+
+      - name: customer_email_is_valid
+        tests:
+          - not_null
+
+      - name: payment_amount_is_valid
+        tests:
+          - not_null
+
+      - name: has_line_items
+        tests:
+          - not_null
+
+      - name: _is_duplicate
+        tests:
+          - not_null
+
+      - name: _loaded_at
+        tests:
+          - not_null
+
+  # ---------------------------------------------------------------------------
+  # stg_transaction_items
+  # ---------------------------------------------------------------------------
+  - name: stg_transaction_items
+    description: >
+      Silver layer. One row per line item, unnested from the TRANSACTIONS
+      raw_payload VARIANT. Client A items come from XML <Item> nodes;
+      Client C from JSON items[] array. Negative and zero quantities/prices flagged.
+    columns:
+      - name: item_sk
+        description: Surrogate key generated from (client_id, source_transaction_id, source_sku).
+        tests:
+          - not_null
+
+      - name: client_id
+        tests:
+          - not_null
+          - accepted_values:
+              values: [client_a, client_c]
+
+      - name: source_transaction_id
+        description: Foreign key to stg_transactions.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_transactions')
+              field: source_transaction_id
+
+      - name: quantity_is_valid
+        tests:
+          - not_null
+
+      - name: unit_price_is_valid
+        tests:
+          - not_null
+
+      - name: _loaded_at
+        tests:
+          - not_null
+
+  # ---------------------------------------------------------------------------
+  # stg_payments
+  # ---------------------------------------------------------------------------
+  - name: stg_payments
+    description: >
+      Silver layer. One row per payment event, unified from three sources:
+      Client C standalone payments CSV, Client A embedded transaction XML payments,
+      and Client C embedded transaction JSON payments. Deduped on
+      (client_id, source_payment_id). Negative amounts flagged as refunds.
+    columns:
+      - name: payment_sk
+        description: Surrogate key generated from (client_id, source_payment_id).
+        tests:
+          - not_null
+          - unique
+
+      - name: client_id
+        tests:
+          - not_null
+          - accepted_values:
+              values: [client_a, client_c]
+
+      - name: source_payment_id
+        tests:
+          - not_null
+
+      - name: amount_is_valid
+        tests:
+          - not_null
+
+      - name: is_refund
+        tests:
+          - not_null
+
+      - name: source_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: [payments_csv, transaction_xml, transaction_json]
+
+      - name: _is_duplicate
+        tests:
+          - not_null
+
+      - name: _loaded_at
+        tests:
+          - not_null
