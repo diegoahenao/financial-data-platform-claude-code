@@ -1,0 +1,137 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # Terraform — fmt + validate
+  # ============================================================================
+  terraform:
+    name: Terraform Lint & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7"
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+        working-directory: terraform
+
+      # Init without a real backend so validate works without credentials.
+      - name: terraform init (local backend)
+        run: terraform init -backend=false
+        working-directory: terraform
+
+      - name: terraform validate
+        run: terraform validate
+        working-directory: terraform
+
+  # ============================================================================
+  # Python — ruff lint + format + pytest
+  # ============================================================================
+  python:
+    name: Python Lint & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install ruff pytest
+
+      - name: ruff lint
+        run: ruff check src/ tests/
+
+      - name: ruff format check
+        run: ruff format --check src/ tests/
+
+      - name: pytest
+        run: pytest tests/ -v --tb=short
+
+  # ============================================================================
+  # dbt — compile + slim CI (only modified models)
+  # ============================================================================
+  dbt:
+    name: dbt Compile & Slim CI
+    runs-on: ubuntu-latest
+    env:
+      SNOWFLAKE_ACCOUNT:     ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_USER:        ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+      PR_NUMBER:             ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch full history so dbt state:modified+ can diff against base.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dbt-snowflake
+        run: pip install dbt-snowflake
+
+      - name: Write Snowflake private key to temp file
+        run: |
+          echo "$SNOWFLAKE_PRIVATE_KEY" > /tmp/snowflake_key.p8
+          chmod 600 /tmp/snowflake_key.p8
+
+      - name: dbt deps
+        working-directory: dbt
+        run: dbt deps
+
+      - name: dbt compile
+        working-directory: dbt
+        run: dbt compile --target ci
+
+      # Download the latest prod manifest to enable slim CI diffing.
+      - name: Download production manifest (slim CI state)
+        working-directory: dbt
+        env:
+          AZURE_STORAGE_ACCOUNT: ${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}
+        run: |
+          mkdir -p ./prod-manifest
+          az storage blob download \
+            --account-name "$AZURE_STORAGE_ACCOUNT" \
+            --container-name "dbt-artifacts" \
+            --name "prod/manifest.json" \
+            --file ./prod-manifest/manifest.json \
+            --auth-mode login \
+            --no-progress \
+          || echo "No prod manifest found — running all models on first run."
+
+      - name: dbt slim CI build (modified models + descendants)
+        working-directory: dbt
+        run: |
+          if [ -f ./prod-manifest/manifest.json ]; then
+            dbt build --select state:modified+ --defer --state ./prod-manifest --target ci
+          else
+            dbt build --target ci
+          fi
+
+      - name: dbt test
+        working-directory: dbt
+        run: dbt test --target ci
+
+      - name: Drop CI schema (cleanup)
+        if: always()
+        working-directory: dbt
+        run: |
+          dbt run-operation drop_schema \
+            --args "{schema: DEV_CI_PR_${PR_NUMBER}}" \
+            --target ci

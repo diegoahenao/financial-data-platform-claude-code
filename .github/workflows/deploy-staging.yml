@@ -1,0 +1,154 @@
+name: Deploy — Staging
+
+on:
+  push:
+    branches: [dev]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false   # never cancel an in-flight deploy
+
+jobs:
+  # ============================================================================
+  # Terraform — plan
+  # ============================================================================
+  terraform-plan:
+    name: Terraform Plan (dev)
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+    outputs:
+      plan-exitcode: ${{ steps.plan.outputs.exitcode }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7"
+
+      - name: terraform init
+        working-directory: terraform
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TF_BACKEND_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=dev.terraform.tfstate"
+
+      - name: terraform plan
+        id: plan
+        working-directory: terraform
+        run: |
+          terraform plan \
+            -var-file=environments/dev/terraform.tfvars \
+            -detailed-exitcode \
+            -out=tfplan.binary
+        continue-on-error: true
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-staging
+          path: terraform/tfplan.binary
+          retention-days: 1
+
+      - name: Fail if plan errored
+        if: steps.plan.outputs.exitcode == '1'
+        run: exit 1
+
+  # ============================================================================
+  # Terraform — apply
+  # ============================================================================
+  terraform-apply:
+    name: Terraform Apply (dev)
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: needs.terraform-plan.outputs.plan-exitcode == '2'   # only if changes exist
+    environment: staging
+    env:
+      ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7"
+
+      - name: terraform init
+        working-directory: terraform
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TF_BACKEND_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=dev.terraform.tfstate"
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-staging
+          path: terraform/
+
+      - name: terraform apply
+        working-directory: terraform
+        run: terraform apply -auto-approve tfplan.binary
+
+  # ============================================================================
+  # dbt — run + test on staging
+  # ============================================================================
+  dbt-staging:
+    name: dbt Run & Test (staging)
+    runs-on: ubuntu-latest
+    needs: terraform-apply
+    env:
+      SNOWFLAKE_ACCOUNT:        ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_USER:           ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_PRIVATE_KEY:    ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dbt-snowflake
+        run: pip install dbt-snowflake
+
+      - name: Write Snowflake private key
+        run: |
+          echo "$SNOWFLAKE_PRIVATE_KEY" > /tmp/snowflake_key.p8
+          chmod 600 /tmp/snowflake_key.p8
+
+      - name: dbt deps
+        working-directory: dbt
+        run: dbt deps
+
+      - name: dbt run (staging)
+        working-directory: dbt
+        run: dbt run --target staging
+
+      - name: dbt test (staging)
+        working-directory: dbt
+        run: dbt test --target staging
+
+      - name: dbt docs generate
+        working-directory: dbt
+        run: dbt docs generate --target staging
+
+      - name: Upload dbt docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-docs-staging
+          path: dbt/target/
+          retention-days: 7
