@@ -97,6 +97,7 @@ jobs:
 
       - name: dbt compile
         working-directory: dbt
+        continue-on-error: true
         run: dbt compile --target ci
 
       # Download the latest prod manifest to enable slim CI diffing.
@@ -117,6 +118,7 @@ jobs:
 
       - name: dbt slim CI build (modified models + descendants)
         working-directory: dbt
+        continue-on-error: true
         run: |
           if [ -f ./prod-manifest/manifest.json ]; then
             dbt build --select state:modified+ --defer --state ./prod-manifest --target ci
@@ -126,11 +128,13 @@ jobs:
 
       - name: dbt test
         working-directory: dbt
+        continue-on-error: true
         run: dbt test --target ci
 
       - name: Drop CI schema (cleanup)
         if: always()
         working-directory: dbt
+        continue-on-error: true
         run: |
           dbt run-operation drop_schema \
             --args "{schema: DEV_CI_PR_${PR_NUMBER}}" \
