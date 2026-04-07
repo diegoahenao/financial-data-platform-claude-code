@@ -269,6 +269,134 @@ resource "snowflake_grant_privileges_to_account_role" "reporter_gold_all_views" 
 }
 
 # ==============================================================================
+# Schema-level grants — SYSADMIN (full read on all schemas for admins)
+# ==============================================================================
+# SYSADMIN owns the FINANCIAL_DATA database but not the schemas/tables within
+# it — those are owned by TRANSFORMER (created by dbt). Without explicit grants,
+# ACCOUNTADMIN (which inherits SYSADMIN) cannot SELECT from SILVER or GOLD.
+# These grants allow any human admin using ACCOUNTADMIN/SYSADMIN to query all
+# layers for debugging and operations.
+
+resource "snowflake_grant_privileges_to_account_role" "sysadmin_raw_schema" {
+  account_role_name = "SYSADMIN"
+  privileges        = ["USAGE"]
+  always_apply      = true
+  on_schema {
+    schema_name = "\"${var.database_name}\".\"RAW\""
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "sysadmin_raw_all_tables" {
+  account_role_name = "SYSADMIN"
+  privileges        = ["SELECT"]
+  always_apply      = true
+  on_schema_object {
+    all {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${var.database_name}\".\"RAW\""
+    }
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "sysadmin_raw_future_tables" {
+  account_role_name = "SYSADMIN"
+  privileges        = ["SELECT"]
+  on_schema_object {
+    future {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${var.database_name}\".\"RAW\""
+    }
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "sysadmin_silver_schema" {
+  account_role_name = "SYSADMIN"
+  privileges        = ["USAGE"]
+  always_apply      = true
+  on_schema {
+    schema_name = "\"${var.database_name}\".\"SILVER\""
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "sysadmin_silver_all_tables" {
+  account_role_name = "SYSADMIN"
+  privileges        = ["SELECT"]
+  always_apply      = true
+  on_schema_object {
+    all {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${var.database_name}\".\"SILVER\""
+    }
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "sysadmin_silver_future_tables" {
+  account_role_name = "SYSADMIN"
+  privileges        = ["SELECT"]
+  on_schema_object {
+    future {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${var.database_name}\".\"SILVER\""
+    }
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "sysadmin_gold_schema" {
+  account_role_name = "SYSADMIN"
+  privileges        = ["USAGE"]
+  always_apply      = true
+  on_schema {
+    schema_name = "\"${var.database_name}\".\"GOLD\""
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "sysadmin_gold_all_tables" {
+  account_role_name = "SYSADMIN"
+  privileges        = ["SELECT"]
+  always_apply      = true
+  on_schema_object {
+    all {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${var.database_name}\".\"GOLD\""
+    }
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "sysadmin_gold_future_tables" {
+  account_role_name = "SYSADMIN"
+  privileges        = ["SELECT"]
+  on_schema_object {
+    future {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${var.database_name}\".\"GOLD\""
+    }
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "sysadmin_gold_all_views" {
+  account_role_name = "SYSADMIN"
+  privileges        = ["SELECT"]
+  always_apply      = true
+  on_schema_object {
+    all {
+      object_type_plural = "VIEWS"
+      in_schema          = "\"${var.database_name}\".\"GOLD\""
+    }
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "sysadmin_gold_future_views" {
+  account_role_name = "SYSADMIN"
+  privileges        = ["SELECT"]
+  on_schema_object {
+    future {
+      object_type_plural = "VIEWS"
+      in_schema          = "\"${var.database_name}\".\"GOLD\""
+    }
+  }
+}
+
+# ==============================================================================
 # Service Account Users
 # ==============================================================================
 # Both users authenticate via RSA key pairs — no passwords per CLAUDE.md policy.
