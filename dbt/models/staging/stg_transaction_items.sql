@@ -53,7 +53,7 @@ client_a_items as (
         ), ''))                                                      as currency
 
     from raw_source s,
-        lateral flatten(input => xmlget(s.raw_payload, 'Items'):$) f
+        lateral flatten(input => xmlget(s.raw_payload, 'Items'):"$") f
     where s.client_id = 'client_a'
 ),
 
