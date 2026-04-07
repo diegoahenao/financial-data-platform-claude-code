@@ -23,8 +23,8 @@ financial_data_platform:
     ci:
       type: snowflake
       account:          "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-      user:             "{{ env_var('SNOWFLAKE_USER') }}"
-      private_key_path: /tmp/snowflake_key.p8
+      user:             DBT_TRANSFORMER
+      private_key_path: /tmp/snowflake_dbt_key.p8
       role:             TRANSFORMER
       database:         FINANCIAL_DATA
       warehouse:        DEV_TRANSFORMATION_WH
@@ -37,8 +37,8 @@ financial_data_platform:
     staging:
       type: snowflake
       account:          "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-      user:             "{{ env_var('SNOWFLAKE_USER') }}"
-      private_key_path: /tmp/snowflake_key.p8
+      user:             DBT_TRANSFORMER
+      private_key_path: /tmp/snowflake_dbt_key.p8
       role:             TRANSFORMER
       database:         FINANCIAL_DATA
       warehouse:        DEV_TRANSFORMATION_WH
@@ -51,8 +51,8 @@ financial_data_platform:
     prod:
       type: snowflake
       account:          "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-      user:             "{{ env_var('SNOWFLAKE_USER') }}"
-      private_key_path: /tmp/snowflake_key.p8
+      user:             DBT_TRANSFORMER
+      private_key_path: /tmp/snowflake_dbt_key.p8
       role:             TRANSFORMER
       database:         FINANCIAL_DATA
       warehouse:        PROD_TRANSFORMATION_WH
