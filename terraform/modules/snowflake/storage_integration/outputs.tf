@@ -8,7 +8,7 @@ output "azure_consent_url" {
     URL to grant Snowflake's managed identity consent in your Azure AD tenant.
     Open this URL in a browser and sign in as an Azure AD admin after the first apply.
   EOT
-  value = snowflake_storage_integration.this.azure_consent_url
+  value       = snowflake_storage_integration.this.azure_consent_url
 }
 
 output "azure_multi_tenant_app_name" {

@@ -5,7 +5,7 @@
 # and BI queries. All warehouses auto-suspend per CLAUDE.md policy (≤ 5 min).
 
 resource "snowflake_warehouse" "ingestion" {
-  name         = "${upper(var.environment)}_INGESTION_WH"
+  name           = "${upper(var.environment)}_INGESTION_WH"
   warehouse_size = var.warehouse_size
   auto_suspend   = var.auto_suspend_seconds
   auto_resume    = true

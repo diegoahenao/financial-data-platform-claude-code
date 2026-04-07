@@ -17,10 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     env:
-      ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
-      ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
-      ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID:                ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET:            ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID:                ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID:          ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      SNOWFLAKE_ORGANIZATION_NAME:  ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME }}
+      SNOWFLAKE_ACCOUNT_NAME:       ${{ secrets.SNOWFLAKE_ACCOUNT_NAME }}
+      SNOWFLAKE_USER:               ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_PRIVATE_KEY_PATH:   /tmp/snowflake_tf_key.p8
     outputs:
       plan-exitcode: ${{ steps.plan.outputs.exitcode }}
 
@@ -30,6 +34,11 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "~1.7"
+
+      - name: Write Snowflake private key
+        run: |
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > /tmp/snowflake_tf_key.p8
+          chmod 600 /tmp/snowflake_tf_key.p8
 
       - name: terraform init
         working-directory: terraform
@@ -71,10 +80,14 @@ jobs:
     if: needs.terraform-plan.outputs.plan-exitcode == '2'   # only if changes exist
     environment: staging
     env:
-      ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
-      ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
-      ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID:                ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET:            ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID:                ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID:          ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      SNOWFLAKE_ORGANIZATION_NAME:  ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME }}
+      SNOWFLAKE_ACCOUNT_NAME:       ${{ secrets.SNOWFLAKE_ACCOUNT_NAME }}
+      SNOWFLAKE_USER:               ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_PRIVATE_KEY_PATH:   /tmp/snowflake_tf_key.p8
 
     steps:
       - uses: actions/checkout@v4
@@ -82,6 +95,11 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "~1.7"
+
+      - name: Write Snowflake private key
+        run: |
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > /tmp/snowflake_tf_key.p8
+          chmod 600 /tmp/snowflake_tf_key.p8
 
       - name: terraform init
         working-directory: terraform
