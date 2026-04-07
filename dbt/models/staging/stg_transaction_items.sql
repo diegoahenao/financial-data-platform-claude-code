@@ -1,3 +1,5 @@
+{{ config(unique_key='item_sk') }}
+
 -- =============================================================================
 -- stg_transaction_items — Silver layer
 -- One row per line item, unnested from the TRANSACTIONS raw_payload VARIANT.
@@ -18,6 +20,9 @@ with
 
 raw_source as (
     select * from {{ source('raw', 'TRANSACTIONS') }}
+    {% if is_incremental() %}
+    where _loaded_at > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 -- ── Client A: flatten XML <Item> nodes ───────────────────────────────────────

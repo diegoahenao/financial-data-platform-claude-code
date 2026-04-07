@@ -17,7 +17,9 @@ models:
   financial_data_platform:
     staging:
       +schema: SILVER
-      +materialized: view
+      +materialized: incremental
+      +incremental_strategy: merge
+      +on_schema_change: sync_all_columns
     marts:
       +schema: GOLD
       +materialized: table

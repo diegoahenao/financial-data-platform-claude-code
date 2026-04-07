@@ -1,3 +1,5 @@
+{{ config(unique_key='customer_sk') }}
+
 -- =============================================================================
 -- stg_customers — Silver layer
 -- One row per unique customer per client, deduplicated, with DQ flags.
@@ -20,6 +22,9 @@ with
 
 source as (
     select * from {{ source('raw', 'CUSTOMERS') }}
+    {% if is_incremental() %}
+    where _loaded_at > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 deduplicated as (

@@ -1,3 +1,5 @@
+{{ config(unique_key='product_sk') }}
+
 -- =============================================================================
 -- stg_products — Silver layer
 -- One row per unique SKU per client, with DQ flags.
@@ -18,6 +20,9 @@ with
 
 source as (
     select * from {{ source('raw', 'PRODUCTS') }}
+    {% if is_incremental() %}
+    where _loaded_at > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 deduplicated as (
