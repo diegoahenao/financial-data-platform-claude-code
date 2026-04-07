@@ -109,3 +109,4 @@ cleaned as (
 )
 
 select * from cleaned
+where {{ is_clean_id('source_customer_id', 'customer_id') }}

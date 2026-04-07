@@ -41,7 +41,6 @@ final as (
     from source
     where not _is_duplicate
       and source_transaction_id is not null
-      and {{ is_clean_id('source_transaction_id', 'transaction_id') }}
 )
 
 select * from final

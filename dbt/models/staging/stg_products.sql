@@ -59,3 +59,4 @@ cleaned as (
 )
 
 select * from cleaned
+where {{ is_clean_id('source_sku', 'sku') }}

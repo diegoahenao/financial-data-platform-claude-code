@@ -33,7 +33,6 @@ final as (
     from source
     where not _is_duplicate
       and source_order_id is not null
-      and {{ is_clean_id('source_order_id', 'order_id') }}
 )
 
 select * from final

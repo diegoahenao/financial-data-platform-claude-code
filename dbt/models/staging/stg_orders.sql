@@ -74,3 +74,4 @@ cleaned as (
 )
 
 select * from cleaned
+where {{ is_clean_id('source_order_id', 'order_id') }}
