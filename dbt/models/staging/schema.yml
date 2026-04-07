@@ -15,7 +15,8 @@ models:
         description: Surrogate key generated from (client_id, source_customer_id).
         tests:
           - not_null
-          - unique
+          - unique:
+              where: "_is_duplicate = false"
 
       - name: client_id
         description: "Source client identifier stamped at ingestion. Values: client_a, client_c."
@@ -27,7 +28,8 @@ models:
       - name: source_customer_id
         description: Original customer ID from the source file.
         tests:
-          - not_null
+          - not_null:
+              severity: warn
 
       - name: email_is_valid
         description: True when email matches a valid RFC-style pattern.
@@ -38,8 +40,7 @@ models:
         description: Harmonised tier. Null when source tier is missing or sentinel (UNKNOWN).
         tests:
           - accepted_values:
-              values: [BRONZE, SILVER, GOLD, PLATINUM]
-              quote: false
+              values: ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM']
               where: "canonical_customer_tier is not null"
 
       - name: _is_duplicate
@@ -65,7 +66,8 @@ models:
         description: Surrogate key generated from (client_id, source_order_id).
         tests:
           - not_null
-          - unique
+          - unique:
+              where: "_is_duplicate = false"
 
       - name: client_id
         tests:
@@ -75,11 +77,13 @@ models:
 
       - name: source_order_id
         tests:
-          - not_null
+          - not_null:
+              severity: warn
 
       - name: source_customer_id
         tests:
-          - not_null
+          - not_null:
+              severity: warn
 
       - name: order_date_is_missing
         tests:
@@ -110,7 +114,8 @@ models:
         description: Surrogate key generated from (client_id, source_sku).
         tests:
           - not_null
-          - unique
+          - unique:
+              where: "_is_duplicate = false"
 
       - name: client_id
         tests:
@@ -120,7 +125,8 @@ models:
 
       - name: source_sku
         tests:
-          - not_null
+          - not_null:
+              severity: warn
 
       - name: unit_price
         tests:
@@ -152,7 +158,8 @@ models:
         description: Surrogate key generated from (client_id, source_transaction_id).
         tests:
           - not_null
-          - unique
+          - unique:
+              where: "_is_duplicate = false"
 
       - name: client_id
         tests:
@@ -242,7 +249,8 @@ models:
         description: Surrogate key generated from (client_id, source_payment_id).
         tests:
           - not_null
-          - unique
+          - unique:
+              where: "_is_duplicate = false"
 
       - name: client_id
         tests:

@@ -142,7 +142,8 @@ final as (
         status,
         amount,
         (amount is not null and amount > 0)                          as amount_is_valid,
-        (amount < 0 or upper(status) = 'REFUNDED')                   as is_refund,
+        (coalesce(amount < 0, false) or coalesce(upper(status) = 'REFUNDED', false))
+                                                                     as is_refund,
         currency,
         processing_fee,
         source_type,
