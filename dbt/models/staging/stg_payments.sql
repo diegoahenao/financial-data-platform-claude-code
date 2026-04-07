@@ -1,3 +1,5 @@
+{{ config(unique_key='payment_sk') }}
+
 -- =============================================================================
 -- stg_payments — Silver layer
 -- One row per payment event, unified from two source types:
@@ -29,6 +31,9 @@ payments_csv as (
         _source_file,
         _loaded_at
     from {{ source('raw', 'PAYMENTS') }}
+    {% if is_incremental() %}
+    where _loaded_at > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 -- ── Source 2 & 3: payments embedded in transactions ──────────────────────────
@@ -95,7 +100,11 @@ txn_payments as (
         _loaded_at
 
     from {{ source('raw', 'TRANSACTIONS') }}
-    where nullif(trim(
+    where true
+    {% if is_incremental() %}
+      and _loaded_at > (select max(_loaded_at) from {{ this }})
+    {% endif %}
+      and nullif(trim(
             case client_id
                 when 'client_a' then
                     get_path(xmlget(raw_payload, 'TransactionID'), '$')::string

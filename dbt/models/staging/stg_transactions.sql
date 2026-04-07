@@ -1,3 +1,5 @@
+{{ config(unique_key='transaction_sk') }}
+
 -- =============================================================================
 -- stg_transactions — Silver layer
 -- One row per unique transaction per client, parsed from VARIANT raw_payload.
@@ -19,6 +21,9 @@ with
 
 raw_source as (
     select * from {{ source('raw', 'TRANSACTIONS') }}
+    {% if is_incremental() %}
+    where _loaded_at > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 -- Client A: one <Transaction> per row via STRIP_OUTER_ELEMENT = TRUE at ingest

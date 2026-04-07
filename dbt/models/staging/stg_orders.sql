@@ -1,3 +1,5 @@
+{{ config(unique_key='order_sk') }}
+
 -- =============================================================================
 -- stg_orders — Silver layer
 -- One row per unique order per client, with DQ flags.
@@ -18,6 +20,9 @@ with
 
 source as (
     select * from {{ source('raw', 'ORDERS') }}
+    {% if is_incremental() %}
+    where _loaded_at > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 deduplicated as (
