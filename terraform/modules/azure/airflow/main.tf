@@ -47,5 +47,10 @@ resource "azurerm_container_app_environment" "airflow" {
   # outbound traffic (Snowflake on 443, Azure APIs) is governed by the NSG.
   infrastructure_subnet_id = var.subnet_airflow_id
 
+  # Azure auto-creates a managed infrastructure resource group named
+  # ME_<cae-name>_<rg-name>_<location>. Explicitly setting this prevents
+  # Terraform from seeing drift on every plan and forcing a replacement.
+  infrastructure_resource_group_name = "ME_${var.name_prefix}-cae-airflow_${var.resource_group_name}_${var.location}"
+
   tags = var.tags
 }
