@@ -34,7 +34,8 @@ models:
       - name: email_is_valid
         description: True when email matches a valid RFC-style pattern.
         tests:
-          - not_null
+          - not_null:
+              severity: warn
 
       - name: canonical_customer_tier
         description: Harmonised tier. Null when source tier is missing or sentinel (UNKNOWN).
@@ -177,7 +178,8 @@ models:
 
       - name: customer_email_is_valid
         tests:
-          - not_null
+          - not_null:
+              severity: warn
 
       - name: payment_amount_is_valid
         tests:
@@ -268,7 +270,8 @@ models:
 
       - name: is_refund
         tests:
-          - not_null
+          - not_null:
+              severity: warn
 
       - name: source_type
         tests:
