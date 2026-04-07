@@ -3,7 +3,12 @@ name: Deploy — Staging
 on:
   push:
     branches: [dev]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      full_refresh:
+        description: "Run dbt with --full-refresh (rebuilds all incremental tables from scratch)"
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-staging
@@ -127,7 +132,11 @@ jobs:
   dbt-staging:
     name: dbt Run & Test (staging)
     runs-on: ubuntu-latest
-    needs: terraform-apply
+    needs: [terraform-plan, terraform-apply]
+    if: |
+      always() &&
+      needs.terraform-plan.result == 'success' &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped')
     env:
       SNOWFLAKE_ORGANIZATION_NAME:  ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME }}
       SNOWFLAKE_ACCOUNT_NAME:       ${{ secrets.SNOWFLAKE_ACCOUNT_NAME }}
@@ -161,7 +170,9 @@ jobs:
 
       - name: dbt run (staging)
         working-directory: dbt
-        run: dbt run --target staging
+        run: |
+          FULL_REFRESH=${{ github.event.inputs.full_refresh == 'true' && '--full-refresh' || '' }}
+          dbt run --target staging $FULL_REFRESH
 
       - name: dbt test (staging)
         working-directory: dbt
