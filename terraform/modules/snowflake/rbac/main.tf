@@ -173,10 +173,10 @@ resource "snowflake_grant_privileges_to_account_role" "reporter_gold_future_view
 # Public keys are supplied as variables; private keys live in Azure Key Vault.
 
 resource "snowflake_user" "airflow_loader" {
-  name         = "AIRFLOW_LOADER"
-  login_name   = "AIRFLOW_LOADER"
-  comment      = "Service account for Airflow ingestion DAGs. Assigned LOADER role."
-  default_role = snowflake_account_role.loader.name
+  name           = "AIRFLOW_LOADER"
+  login_name     = "AIRFLOW_LOADER"
+  comment        = "Service account for Airflow ingestion DAGs. Assigned LOADER role."
+  default_role   = snowflake_account_role.loader.name
   rsa_public_key = var.airflow_loader_rsa_public_key
 
   lifecycle {
@@ -185,10 +185,10 @@ resource "snowflake_user" "airflow_loader" {
 }
 
 resource "snowflake_user" "dbt_transformer" {
-  name         = "DBT_TRANSFORMER"
-  login_name   = "DBT_TRANSFORMER"
-  comment      = "Service account for dbt transformation runs. Assigned TRANSFORMER role."
-  default_role = snowflake_account_role.transformer.name
+  name           = "DBT_TRANSFORMER"
+  login_name     = "DBT_TRANSFORMER"
+  comment        = "Service account for dbt transformation runs. Assigned TRANSFORMER role."
+  default_role   = snowflake_account_role.transformer.name
   rsa_public_key = var.dbt_transformer_rsa_public_key
 
   lifecycle {

@@ -162,7 +162,7 @@ variable "airflow_loader_rsa_public_key" {
     Generate: openssl genrsa 2048 | openssl pkcs8 -topk8 -nocrypt -out rsa_key.p8 && openssl rsa -in rsa_key.p8 -pubout | grep -v 'PUBLIC KEY'
     Store the private key in Azure Key Vault; only the public key goes here.
   EOT
-  type = string
+  type        = string
 }
 
 variable "dbt_transformer_rsa_public_key" {
@@ -171,7 +171,7 @@ variable "dbt_transformer_rsa_public_key" {
     Generate: openssl genrsa 2048 | openssl pkcs8 -topk8 -nocrypt -out rsa_key.p8 && openssl rsa -in rsa_key.p8 -pubout | grep -v 'PUBLIC KEY'
     Store the private key in Azure Key Vault; only the public key goes here.
   EOT
-  type = string
+  type        = string
 }
 
 variable "snowflake_warehouse_size" {

@@ -187,5 +187,5 @@ module "snowflake_storage_integration" {
   container_names      = module.blob_storage.container_names
   database_name        = var.snowflake_database
   environment          = var.environment
-  depends_on = [module.blob_storage, module.snowflake_rbac]
+  depends_on           = [module.blob_storage, module.snowflake_rbac]
 }

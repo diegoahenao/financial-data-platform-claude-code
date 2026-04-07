@@ -14,8 +14,8 @@ variable "airflow_loader_rsa_public_key" {
     Generate with: openssl genrsa 2048 | openssl pkcs8 -topk8 -nocrypt -out rsa_key.p8
     Store the private key in Azure Key Vault; pass only the public key here.
   EOT
-  type      = string
-  sensitive = false
+  type        = string
+  sensitive   = false
 }
 
 variable "dbt_transformer_rsa_public_key" {
@@ -24,6 +24,6 @@ variable "dbt_transformer_rsa_public_key" {
     Generate with: openssl genrsa 2048 | openssl pkcs8 -topk8 -nocrypt -out rsa_key.p8
     Store the private key in Azure Key Vault; pass only the public key here.
   EOT
-  type      = string
-  sensitive = false
+  type        = string
+  sensitive   = false
 }
