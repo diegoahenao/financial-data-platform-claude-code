@@ -98,7 +98,13 @@ Thumbs.db
 # ==============================================================================
 # Claude Code
 # ==============================================================================
-.claude/
+# Keep agents/ and commands/ — these are project-level config shared with the team.
+# Ignore local-only files: settings, memory, conversation state.
+.claude/settings.json
+.claude/settings.local.json
+.claude/memory/
+.claude/*.jsonl
+.claude/todos.json
 
 # ==============================================================================
 # Miscellaneous
