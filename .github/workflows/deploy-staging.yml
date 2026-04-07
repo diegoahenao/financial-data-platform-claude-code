@@ -128,9 +128,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: terraform-apply
     env:
-      SNOWFLAKE_ACCOUNT:        ${{ secrets.SNOWFLAKE_ACCOUNT }}
-      SNOWFLAKE_USER:           ${{ secrets.SNOWFLAKE_USER }}
-      SNOWFLAKE_PRIVATE_KEY:    ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+      SNOWFLAKE_ORGANIZATION_NAME: ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME }}
+      SNOWFLAKE_ACCOUNT_NAME:      ${{ secrets.SNOWFLAKE_ACCOUNT_NAME }}
+      SNOWFLAKE_USER:              ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_PRIVATE_KEY:       ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -142,6 +143,11 @@ jobs:
 
       - name: Install dbt-snowflake
         run: pip install dbt-snowflake
+
+      # dbt profiles.yml reads SNOWFLAKE_ACCOUNT as orgname-accountname.
+      # Construct it from the two Terraform secrets rather than adding a third.
+      - name: Set Snowflake account identifier
+        run: echo "SNOWFLAKE_ACCOUNT=${SNOWFLAKE_ORGANIZATION_NAME}-${SNOWFLAKE_ACCOUNT_NAME}" >> $GITHUB_ENV
 
       - name: Write Snowflake private key
         run: |
