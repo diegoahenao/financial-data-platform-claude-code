@@ -21,6 +21,7 @@ resource "azurerm_subnet" "airflow" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = [var.subnet_airflow_cidr]
+  service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault"]
 }
 
 # Hosts all private endpoint NICs — one NIC per private endpoint.
@@ -29,6 +30,7 @@ resource "azurerm_subnet" "private_endpoints" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = [var.subnet_private_endpoints_cidr]
+  service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault"]
 }
 
 # ==============================================================================

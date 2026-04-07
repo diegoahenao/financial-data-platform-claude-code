@@ -1,0 +1,23 @@
+name: financial_data_platform
+version: "1.0.0"
+config-version: 2
+
+profile: financial_data_platform
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  financial_data_platform:
+    staging:
+      +schema: SILVER
+      +materialized: view
+    marts:
+      +schema: GOLD
+      +materialized: table
