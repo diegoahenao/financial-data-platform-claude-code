@@ -38,6 +38,7 @@ final as (
     from source
     where not _is_duplicate
       and source_payment_id is not null
+      and {{ is_clean_id('source_payment_id', 'payment_id') }}
 )
 
 select * from final

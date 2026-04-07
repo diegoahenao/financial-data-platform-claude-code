@@ -40,6 +40,8 @@ final as (
     from source
     where source_transaction_id is not null
       and source_sku is not null
+      and {{ is_clean_id('source_transaction_id', 'transaction_id') }}
+      and {{ is_clean_id('source_sku', 'sku') }}
 )
 
 select * from final
