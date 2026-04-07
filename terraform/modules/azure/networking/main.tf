@@ -22,6 +22,15 @@ resource "azurerm_subnet" "airflow" {
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = [var.subnet_airflow_cidr]
   service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault"]
+
+  # Required for Azure Container Apps VNet injection.
+  delegation {
+    name = "Microsoft.App.environments"
+    service_delegation {
+      name    = "Microsoft.App/environments"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
+  }
 }
 
 # Hosts all private endpoint NICs — one NIC per private endpoint.
