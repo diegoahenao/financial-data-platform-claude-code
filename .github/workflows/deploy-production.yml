@@ -1,0 +1,191 @@
+name: Deploy — Production
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false   # never cancel an in-flight production deploy
+
+jobs:
+  # ============================================================================
+  # Terraform — plan
+  # ============================================================================
+  terraform-plan:
+    name: Terraform Plan (prod)
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+    outputs:
+      plan-exitcode: ${{ steps.plan.outputs.exitcode }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7"
+
+      - name: terraform init
+        working-directory: terraform
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TF_BACKEND_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=prod.terraform.tfstate"
+
+      - name: terraform plan
+        id: plan
+        working-directory: terraform
+        run: |
+          terraform plan \
+            -var-file=environments/prod/terraform.tfvars \
+            -detailed-exitcode \
+            -out=tfplan.binary
+        continue-on-error: true
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-production
+          path: terraform/tfplan.binary
+          retention-days: 1
+
+      - name: Fail if plan errored
+        if: steps.plan.outputs.exitcode == '1'
+        run: exit 1
+
+  # ============================================================================
+  # Manual approval gate — required before apply
+  # Configured via GitHub environment "production" protection rules.
+  # ============================================================================
+  await-approval:
+    name: Awaiting Manual Approval
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: needs.terraform-plan.outputs.plan-exitcode == '2'
+    environment: production          # environment has required reviewers configured
+    steps:
+      - name: Approval granted
+        run: echo "Production deployment approved — proceeding with apply."
+
+  # ============================================================================
+  # Terraform — apply (only after manual approval)
+  # ============================================================================
+  terraform-apply:
+    name: Terraform Apply (prod)
+    runs-on: ubuntu-latest
+    needs: [terraform-plan, await-approval]
+    if: needs.terraform-plan.outputs.plan-exitcode == '2'
+    environment: production
+    env:
+      ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7"
+
+      - name: terraform init
+        working-directory: terraform
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TF_BACKEND_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=prod.terraform.tfstate"
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-production
+          path: terraform/
+
+      - name: terraform apply
+        working-directory: terraform
+        run: terraform apply -auto-approve tfplan.binary
+
+  # ============================================================================
+  # dbt — run + test on production
+  # ============================================================================
+  dbt-production:
+    name: dbt Run & Test (prod)
+    runs-on: ubuntu-latest
+    needs: terraform-apply
+    environment: production
+    env:
+      SNOWFLAKE_ACCOUNT:     ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_USER:        ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dbt-snowflake
+        run: pip install dbt-snowflake
+
+      - name: Write Snowflake private key
+        run: |
+          echo "$SNOWFLAKE_PRIVATE_KEY" > /tmp/snowflake_key.p8
+          chmod 600 /tmp/snowflake_key.p8
+
+      - name: dbt deps
+        working-directory: dbt
+        run: dbt deps
+
+      - name: dbt run (prod)
+        working-directory: dbt
+        run: dbt run --target prod
+
+      - name: dbt test (prod)
+        working-directory: dbt
+        run: dbt test --target prod
+
+      - name: dbt docs generate
+        working-directory: dbt
+        run: dbt docs generate --target prod
+
+      - name: Upload dbt manifest (used for slim CI on next PR)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-manifest-prod
+          path: dbt/target/manifest.json
+          retention-days: 30
+
+      - name: Publish manifest to Azure Blob (slim CI state)
+        env:
+          ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+        run: |
+          az login --service-principal \
+            -u "$ARM_CLIENT_ID" \
+            -p "$ARM_CLIENT_SECRET" \
+            --tenant "$ARM_TENANT_ID" \
+            --output none
+
+          az storage blob upload \
+            --account-name "${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            --container-name "dbt-artifacts" \
+            --name "prod/manifest.json" \
+            --file dbt/target/manifest.json \
+            --auth-mode login \
+            --overwrite \
+            --output none

@@ -1,0 +1,110 @@
+# ==============================================================================
+# Terraform
+# ==============================================================================
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+terraform.tfplan
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+crash.log
+crash.*.log
+
+# tfvars may contain sensitive values — only commit if they are scrubbed
+# environments/*/terraform.tfvars are committed intentionally (no secrets, only refs)
+# Uncomment the line below if you do NOT want to commit any tfvars:
+# *.tfvars
+
+# Lock files SHOULD be committed to pin provider versions
+# .terraform.lock.hcl  ← do NOT ignore
+
+# ==============================================================================
+# Secrets and credentials — NEVER commit
+# ==============================================================================
+*.pem
+*.p8
+*.key
+*.pfx
+*.p12
+*_rsa
+*_rsa.pub
+id_rsa*
+id_ed25519*
+*.asc
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+
+# ==============================================================================
+# Python
+# ==============================================================================
+.env/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+pip-wheel-metadata/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ==============================================================================
+# dbt
+# ==============================================================================
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/profiles.yml.local
+
+# ==============================================================================
+# Airflow
+# ==============================================================================
+airflow/logs/
+airflow/airflow.db
+airflow/airflow.cfg
+airflow/webserver_config.py
+airflow/standalone_admin_password.txt
+
+# ==============================================================================
+# IDE and OS
+# ==============================================================================
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ==============================================================================
+# Claude Code
+# ==============================================================================
+.claude/
+
+# ==============================================================================
+# Miscellaneous
+# ==============================================================================
+*.log
+*.tmp
+*.bak
+node_modules/
+.cache/

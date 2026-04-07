@@ -1,0 +1,60 @@
+financial_data_platform:
+  target: dev
+  outputs:
+
+    # -------------------------------------------------------------------------
+    # dev — local development (each developer gets an isolated schema)
+    # -------------------------------------------------------------------------
+    dev:
+      type: snowflake
+      account:          "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user:             "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
+      role:             TRANSFORMER
+      database:         FINANCIAL_DATA
+      warehouse:        DEV_TRANSFORMATION_WH
+      schema:           "DEV_{{ env_var('USER') | upper }}"
+      threads:          4
+
+    # -------------------------------------------------------------------------
+    # ci — GitHub Actions PR runs (isolated schema per PR number)
+    # Per CLAUDE.md: schema suffix _pr_<PR_NUMBER>
+    # -------------------------------------------------------------------------
+    ci:
+      type: snowflake
+      account:          "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user:             "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: /tmp/snowflake_key.p8
+      role:             TRANSFORMER
+      database:         FINANCIAL_DATA
+      warehouse:        DEV_TRANSFORMATION_WH
+      schema:           "DEV_CI_PR_{{ env_var('PR_NUMBER', 'LOCAL') }}"
+      threads:          4
+
+    # -------------------------------------------------------------------------
+    # staging — runs on merge to dev branch
+    # -------------------------------------------------------------------------
+    staging:
+      type: snowflake
+      account:          "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user:             "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: /tmp/snowflake_key.p8
+      role:             TRANSFORMER
+      database:         FINANCIAL_DATA
+      warehouse:        DEV_TRANSFORMATION_WH
+      schema:           SILVER
+      threads:          4
+
+    # -------------------------------------------------------------------------
+    # prod — runs on merge to main (requires manual approval)
+    # -------------------------------------------------------------------------
+    prod:
+      type: snowflake
+      account:          "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user:             "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: /tmp/snowflake_key.p8
+      role:             TRANSFORMER
+      database:         FINANCIAL_DATA
+      warehouse:        PROD_TRANSFORMATION_WH
+      schema:           SILVER
+      threads:          8

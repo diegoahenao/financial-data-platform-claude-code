@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "snowflake": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "uvx mcp-snowflake-service --account \"$SNOWFLAKE_ACCOUNT\" --username \"$SNOWFLAKE_USER\" --warehouse \"$SNOWFLAKE_WAREHOUSE\" --database \"$SNOWFLAKE_DATABASE\" --schema \"$SNOWFLAKE_SCHEMA\" --role \"$SNOWFLAKE_ROLE\" --private_key_path \"$SNOWFLAKE_PRIVATE_KEY_PATH\""
+      ]
+    }
+  }
+}
