@@ -143,10 +143,9 @@ jobs:
     needs: terraform-apply
     environment: production
     env:
-      SNOWFLAKE_ORGANIZATION_NAME: ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME }}
-      SNOWFLAKE_ACCOUNT_NAME:      ${{ secrets.SNOWFLAKE_ACCOUNT_NAME }}
-      SNOWFLAKE_USER:              ${{ secrets.SNOWFLAKE_USER }}
-      SNOWFLAKE_PRIVATE_KEY:       ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+      SNOWFLAKE_ORGANIZATION_NAME:  ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME }}
+      SNOWFLAKE_ACCOUNT_NAME:       ${{ secrets.SNOWFLAKE_ACCOUNT_NAME }}
+      SNOWFLAKE_DBT_PRIVATE_KEY:    ${{ secrets.SNOWFLAKE_DBT_PRIVATE_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -164,10 +163,11 @@ jobs:
       - name: Set Snowflake account identifier
         run: echo "SNOWFLAKE_ACCOUNT=${SNOWFLAKE_ORGANIZATION_NAME}-${SNOWFLAKE_ACCOUNT_NAME}" >> $GITHUB_ENV
 
-      - name: Write Snowflake private key
+      # Write DBT_TRANSFORMER service account private key (separate from Terraform key).
+      - name: Write dbt private key
         run: |
-          echo "$SNOWFLAKE_PRIVATE_KEY" > /tmp/snowflake_key.p8
-          chmod 600 /tmp/snowflake_key.p8
+          echo "$SNOWFLAKE_DBT_PRIVATE_KEY" > /tmp/snowflake_dbt_key.p8
+          chmod 600 /tmp/snowflake_dbt_key.p8
 
       - name: dbt deps
         working-directory: dbt
